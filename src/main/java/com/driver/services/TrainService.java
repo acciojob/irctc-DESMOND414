@@ -26,7 +26,14 @@ public class TrainService {
         //and route String logic to be taken from the Problem statement.
         //Save the train and return the trainId that is generated from the database.
         //Avoid using the lombok library
-        return null;
+
+        Train train = new Train();
+        train.setDepartureTime(trainEntryDto.getDepartureTime());
+        train.setNoOfSeats(trainEntryDto.getNoOfSeats());
+        train.setRoute(trainEntryDto.getStationRoute().toString());
+
+        Train savedTrain = trainRepository.save(train);
+        return savedTrain.getTrainId();
     }
 
     public Integer calculateAvailableSeats(SeatAvailabilityEntryDto seatAvailabilityEntryDto){
@@ -39,8 +46,26 @@ public class TrainService {
         //even if that seat is booked post the destStation or before the boardingStation
         //Inshort : a train has totalNo of seats and there are tickets from and to different locations
         //We need to find out the available seats between the given 2 stations.
+        Integer trainId = seatAvailabilityEntryDto.getTrainId();
+        Station sourceStation = seatAvailabilityEntryDto.getFromStation();
+        Station destStation = seatAvailabilityEntryDto.getToStation();
 
-       return null;
+        Train train = trainRepository.findById(trainId).orElse(null);
+        if (train == null) {
+            return null; // Train not found
+        }
+
+        List<Ticket> tickets = train.getBookedTickets();
+
+        int availableSeats = train.getNoOfSeats();
+        for (Ticket ticket : tickets) {
+            if (ticket.getFromStation().equals(sourceStation) && ticket.getToStation().equals(destStation)) {
+                availableSeats--;
+            }
+        }
+
+        return availableSeats;
+
     }
 
     public Integer calculatePeopleBoardingAtAStation(Integer trainId,Station station) throws Exception{
@@ -50,8 +75,21 @@ public class TrainService {
         //throw new Exception("Train is not passing from this station");
         //  in a happy case we need to find out the number of such people.
 
+        Train train = trainRepository.findById(trainId).orElse(null);
+        if (train == null) {
+            throw new Exception("Train is not found");
+        }
 
-        return 0;
+        int count = 0;
+        List<Ticket> tickets = train.getBookedTickets();
+        for (Ticket ticket : tickets) {
+            if (ticket.getFromStation().equals(station)) {
+                count++;
+            }
+        }
+
+        return count;
+
     }
 
     public Integer calculateOldestPersonTravelling(Integer trainId){
@@ -59,8 +97,24 @@ public class TrainService {
         //Throughout the journey of the train between any 2 stations
         //We need to find out the age of the oldest person that is travelling the train
         //If there are no people travelling in that train you can return 0
+        Train train = trainRepository.findById(trainId).orElse(null);
+        if (train == null) {
+            return 0; // Train not found
+        }
 
-        return 0;
+        List<Ticket> tickets = train.getBookedTickets();
+        int oldestAge = 0;
+        for (Ticket ticket : tickets) {
+            List<Passenger> passengers = ticket.getPassengersList();
+            for (Passenger passenger : passengers) {
+                int passengerAge = passenger.getAge();
+                if (passengerAge > oldestAge) {
+                    oldestAge = passengerAge;
+                }
+            }
+        }
+
+        return oldestAge;
     }
 
     public List<Integer> trainsBetweenAGivenTime(Station station, LocalTime startTime, LocalTime endTime){
@@ -71,7 +125,18 @@ public class TrainService {
         //in problem statement)
         //You can also assume the seconds and milli seconds value will be 0 in a LocalTime format.
 
-        return null;
+        List<Train> trains = trainRepository.findByRouteContains(station);
+
+        List<Integer> trainIds = new ArrayList<>();
+        for (Train train : trains) {
+            LocalTime departureTime = train.getDepartureTime();
+            if (departureTime.isAfter(startTime) && departureTime.isBefore(endTime.plusSeconds(1))) {
+                trainIds.add(train.getTrainId());
+            }
+        }
+
+        return trainIds;
+
     }
 
 }
